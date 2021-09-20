@@ -1,0 +1,14 @@
+# These are the requirements necessary for the python
+# code, you should do something like
+# conda create --name matmor python=3.7 pip
+# conda activate matmor
+# pip install -r requirements.txt
+
+numpy
+pandas
+scipy
+networkx
+evol
+matplotlib
+jupyter
+plotly

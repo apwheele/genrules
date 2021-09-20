@@ -1,0 +1,8 @@
+# Do not upload anything in data folder
+data/*
+*.csv
+
+# I do not want python junk
+__pycache__/
+.ipynb_checkpoints/
+
