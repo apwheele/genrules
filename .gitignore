@@ -1,7 +1,18 @@
-# Do not upload anything in data folder
+# Do not upload the restricted data
 # data/*
 *.csv
 
 # I do not want python junk
 .ipynb_checkpoints/
 
+# Just extra docs I put in the data folder
+data/1_nuMoM2b Protocol_2012-08-08.pdf
+data/nuMoM2b Dataset Information.xlsx
+data/nuMoM2b-Database-Documentation-Public-Version 01-20190304-Final.pdf
+data/nuMoM2b_Codebook_NICHD Data Challenge.xlsx
+data/nuMoM2b_Dataset_NICHD Data Challenge.csv
+data/nuMoM2b_User Guide_NICHD Data Challenge.pdf
+data/Publication List for Nulliparous Pregnancy Outcomes Study.pdf
+data/~$nuMoM2b_Codebook_NICHD Data Challenge.xlsx
+src/__pycache__/dataprep.cpython-38.pyc
+src/__pycache__/genrules.cpython-38.pyc

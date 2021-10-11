@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import copy
 import random
+from datetime import datetime
 from scipy.stats import norm
 from evol import Population, Evolution
 import itertools
@@ -45,20 +46,29 @@ def sel_any(fm, prob):
     return res_li
 
 class genrules():
-    def __init__(self,data,y_var,x_vars,w_var,k=3,penrat=32,
-                 clip_val=1e-12,min_samp=20,mut_prob=0.5,leader_tot=100):
+    def __init__(self,data,y_var,x_vars,w_var=None,k=2,penrat=16,
+                 pen_var=0.2,clip_val=1e-3,min_samp=50,mut_prob=0.5,
+                 leader_tot=100,neg_fit=-5):
         """
         generating initial object and attaching data
         """
         self.y_var = y_var
         self.x_vars = x_vars
-        self.w_var = w_var
+        self.tot_n = data.shape[0]
+        if w_var is None:
+            self.w_var = 'weight'
+            self.w = pd.Series(1, index=data.index)
+        else:
+            self.w_var = w_var
+            self.w = data[w_var]
         self.x = data[x_vars]
         self.y = data[y_var]
-        self.w = data[w_var]
+        self.y_out = self.y.sum()
         self.len_x = len(x_vars)
         self.min_samp = min_samp
         self.penrat = penrat
+        self.pen_var = pen_var
+        self.neg_fit = neg_fit
         # Creating the offset ratio for the penalty term
         topy = np.log2(penrat)
         boty =  1 #np.log2(2)
@@ -71,6 +81,7 @@ class genrules():
         self.mut_prob = mut_prob
         self.clip_val = clip_val
         # Creating the initial population
+        print(f'Creating initial pop, starting at {datetime.now()}')
         res = []
         for i,v in enumerate(self.x_vars):
             for c in self.fm[v]:
@@ -87,6 +98,7 @@ class genrules():
                     all_res.loc[:,left_over] = None
                     for r in all_res.itertuples():
                         res.append(r[1:])
+        print(f'Total N of initial population {len(res)} (finished @ {datetime.now()})')
         self.init_pop = res
         # Maybe add in random pairs/triples/etc.
         # placeholder for pop Object
@@ -104,18 +116,27 @@ class genrules():
         npx = np.array(xp)
         xvsel = (npx != None)
         # If all zeroes, return 0s across board
+        neg_ret = (0,0,0,0,0,0,self.neg_fit)
         if xvsel.sum() == 0:
-            return (0,0,0,0,0)
+            return neg_ret
         # Else go through the motions
         xdsel = 1*((self.x.iloc[:,xvsel] == npx[xvsel]).all(axis=1))
-        # If not enough cases, return 0s
-        if (xdsel*self.w).sum() < self.min_samp:
-            return (0,0,0,0,0)
-        ct = pd.crosstab(index=xdsel,columns=self.y,values=self.w,aggfunc=sum).fillna(self.clip_val)
+        sel_n = (xdsel*self.w).sum()
+        sel_out = (xdsel*self.w*self.y).sum()
+        # If sel_out is 0, can eliminate
+        if sel_out == 0:
+            return neg_ret
+        obv_n = self.tot_n - sel_n
+        obv_out = self.y_out - sel_out
+        # If groups are too small, also eliminate
+        if (sel_n < self.min_samp) | (obv_n < self.min_samp):
+            return neg_ret
+        nt = np.array([[sel_n-sel_out,sel_out],[obv_n-obv_out,obv_out]])
+        #ct = pd.crosstab(index=xdsel,columns=self.y,values=self.w,aggfunc=sum).fillna(self.clip_val)
         # If shape is not right (0 values in some row/column, return all 0s)
-        if (ct.shape[0] != 2) | (ct.shape[1] != 2):
-            return (0,0,0,0,0)
-        nt = np.array(ct)
+        #if (ct.shape[0] != 2) | (ct.shape[1] != 2):
+            #return neg_ret
+        #nt = np.array(ct)
         # calculate relative risk (clipping so no exact zeroes)
         selp = (nt[0,1]/(nt[0,0] + nt[0,1])) #0 in numerator is ok
         obsp = (nt[1,1]/(nt[1,0] + nt[1,1])).clip(self.clip_val)
@@ -123,14 +144,16 @@ class genrules():
         # calculate p-value for log relative risk
         log_rr = np.log(relrisk.clip(self.clip_val))
         l1 = nt[0,0]/(nt[0,1]*(nt[0,1] + nt[0,0]))
-        l2 = nt[1,0]/(nt[1,1]*(nt[1,1] + nt[1,0]))
+        l2 = nt[1,0]/(nt[1,1]*(nt[1,1] + nt[1,0])).clip(self.clip_val)
         se_rr = np.sqrt( (l1 + l2) )
         z = log_rr/se_rr
         p = 1 - norm.cdf(z) # only positive part
         # The penalty term
         fitness = np.log2(relrisk).clip(-self.top_clip,self.top_clip) + p*self.penterms[0] + self.penterms[1]
+        # Additional penalty for extra terms
+        fitness -= self.pen_var*len(xvsel)
         # The relative risk is penalized by p-value
-        return [relrisk, log_rr, se_rr, p, fitness]
+        return [relrisk, log_rr, se_rr, p, sel_n, sel_out, fitness]
     def opt_func(self, xp):
         #print(xp) #useful for debugging
         return self.opt_stats(xp)[-1]
@@ -157,8 +180,9 @@ class genrules():
             # pick a new variant
             rvs = self.x_vars[rv]
             left_overs = set(self.fm[rvs]) - set([x[rv]])
-            # Add back in
-            xn[rv] = np.random.choice(list(left_overs))
+            if len(left_overs) > 0:
+                # Add back in
+                xn[rv] = np.random.choice(list(left_overs))
             return tuple(xn)
     def child(self, x1, x2):
         # making children given two input lists
@@ -195,7 +219,7 @@ class genrules():
                 vals = list(self.opt_stats(cr))
                 lab = [{v:l for v,l in zip(self.x_vars,cr) if l is not None}]
                 r1.append(cr + vals + lab)
-        rdat = pd.DataFrame(r1, columns=self.x_vars + ['relrisk','log_rr','se_rr','pval','fitness'] + ['label'])
+        rdat = pd.DataFrame(r1, columns=self.x_vars + ['relrisk','log_rr','se_rr','pval','tot_n','out_n','fitness'] + ['label'])
         rdat.drop_duplicates(subset=self.x_vars,inplace=True)
         rdat.sort_values(by='fitness',ascending=False,inplace=True,ignore_index=True)
         rdat = rdat[rdat['fitness'] > 0].reset_index(drop=True)
@@ -209,32 +233,36 @@ class genrules():
             combined = pd.concat([old,rdat],axis=0)
             combined.drop_duplicates(subset=self.x_vars,keep='first',inplace=True)
             combined.sort_values(by='fitness',ascending=False,inplace=True,ignore_index=True)
+            combined.reset_index(drop=True, inplace=True)
             if combined.shape[0] > self.leaderboard_tot:
                 combined = combined.head(self.leaderboard_tot).copy()
             print(f"Total new cases added to leaderboard {combined['new'].sum()}")
             self.leaderboard = combined[list(self.leaderboard)].copy()
         return rdat
-    def evolve(self, surv_n, rep, set_mute='add', redo_pop=False):
+    def evolve(self, rep, set_mute='add', redo_pop=False):
         if self.leaderboard is None:
-            print('Creating initial leaderboard')
+            print(f'Creating initial leaderboard @ {datetime.now()}')
             tab = self.table_pop()
+            if rep == 0:
+                print(f'Finished Initial leaderboard @ {datetime.now()}')
         #if pop none create it, else evolve that result even further
         if self.evo_pop is None:
             self.evo_pop = Population(chromosomes=self.init_pop,eval_function=self.opt_func,
                            maximize=True)
         elif redo_pop:
-            leader_pop = [i[1:] for i in self.leaderboard[ge.x_vars].itertuples()]
-            self.evo_pop = Population(chromosomes=leader_pop,eval_function=self.opt_func,
+            leader_pop = [i[1:] for i in self.leaderboard[self.x_vars].itertuples()]
+            self.evo_pop = Population(chromosomes=leader_pop[0:self.leaderboard_tot],eval_function=self.opt_func,
                            maximize=True)
         evo = (Evolution()
-               .survive(n=surv_n)
+               .survive(n=self.leaderboard_tot)
                .breed(parent_picker=self.pick_parents,combiner=self.child)
                .mutate(mutate_function=self.mut_rand))
-        for _ in range(rep):
-            self.generation += 1
-            print(f'\nGeneration {self.generation}')
-            self.evo_pop = self.evo_pop.evolve(evo, n=1)
-            tab = self.table_pop()
+        if rep > 0:
+            for _ in range(rep):
+                self.generation += 1
+                print(f'\nGeneration {self.generation} starting @ {datetime.now()}')
+                self.evo_pop = self.evo_pop.evolve(evo, n=1)
+                tab = self.table_pop()
     def active_table(self,type='vars'):
         if type == 'vars':
             res = (~self.leaderboard[self.x_vars].isna()).sum(axis=0)
@@ -277,8 +305,9 @@ class genrules():
         # Now making nice network graph
         return g
 
+
+
 # ToDo
-# Add in TotN to tables
 # CoMorbid function
 # Risk Difference Black/White (totally new class)
 
