@@ -241,7 +241,7 @@ class genrules():
         return rdat
     def evolve(self, rep, set_mute='add', redo_pop=False):
         if self.leaderboard is None:
-            print(f'Creating initial leaderboard @ {datetime.now()}')
+            print(f'\nCreating initial leaderboard @ {datetime.now()}')
             tab = self.table_pop()
             if rep == 0:
                 print(f'Finished Initial leaderboard @ {datetime.now()}')

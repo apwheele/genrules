@@ -96,3 +96,15 @@ drug_act[drug_act['Attribute'] == 1]
 # Lets look at Insulin
 tb.loc[tb['Drug_341'] == 1,['relrisk','pval','tot_n','out_n','label']]
 ###################################################
+
+
+rhv = ['CRace','BMI_Cat','AgeCat_V1','CMAE03']
+hyper_dat2 = dataprep.prep_dat(hyper,rhv)
+
+hy_ge2 = genrules.genrules(data=hyper_dat2,y_var=hyper,x_vars=rhv,k=4)
+
+# Enumerates all possible 4 categories, no need to evolve
+hy_ge2.evolve(rep=0)
+
+tb = hy_ge2.leaderboard
+tb[['relrisk','pval','tot_n','out_n','label']].head(20)
