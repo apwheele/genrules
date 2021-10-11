@@ -24,5 +24,7 @@ Or if you prefer to browse html output, you could use
 If you have any questions, please feel free to contact me,
 
 Andrew Wheeler, PhD
+
 awheeler29@gsu.edu
+
 https://andrewpwheeler.com/

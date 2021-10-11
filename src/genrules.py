@@ -253,6 +253,8 @@ class genrules():
             leader_pop = [i[1:] for i in self.leaderboard[self.x_vars].itertuples()]
             self.evo_pop = Population(chromosomes=leader_pop[0:self.leaderboard_tot],eval_function=self.opt_func,
                            maximize=True)
+        # Setting the mutation type
+        self.mutype = set_mute
         evo = (Evolution()
                .survive(n=self.leaderboard_tot)
                .breed(parent_picker=self.pick_parents,combiner=self.child)
