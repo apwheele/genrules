@@ -16,3 +16,6 @@ data/Publication List for Nulliparous Pregnancy Outcomes Study.pdf
 data/~$nuMoM2b_Codebook_NICHD Data Challenge.xlsx
 src/__pycache__/dataprep.cpython-38.pyc
 src/__pycache__/genrules.cpython-38.pyc
+
+# My scratch file, have transferred results to notebooks
+scratch.py

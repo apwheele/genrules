@@ -13,7 +13,13 @@ Use notes:
 
 The folder `/tech_docs` has more technical documentation on the genetic algorithm, but also note the source code for the functions is 100% provided in `/src/genrules.py`. 
 
-The folder `/examples` provides several Jupyter notebooks that illustrate the results 
+The jupyter notebook `Example1_genrules.ipynb` provides examples of the base algorithm to identify particular comorbidities. To run this notebook locally, you can use the command:
+
+    jupyter nbconvert --to notebook --execute Example1_genrules.ipynb --output Example1_genrules.ipynb
+
+Or if you prefer to browse html output, you could use
+
+    jupyter nbconvert --execute Example1_genrules.ipynb --to html
 
 If you have any questions, please feel free to contact me,
 
