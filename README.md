@@ -21,10 +21,10 @@ Or if you prefer to browse html output, you could use
 
     jupyter nbconvert --execute Example1_genrules.ipynb --to html
 
+The submission forms are located in the submission_forms folder (the registration and overall submission form).
+
 If you have any questions, please feel free to contact me,
 
-Andrew Wheeler, PhD
-
-awheeler29@gsu.edu
-
-https://andrewpwheeler.com/
+ - Andrew Wheeler, PhD
+ - awheeler29@gsu.edu
+ - https://andrewpwheeler.com/
