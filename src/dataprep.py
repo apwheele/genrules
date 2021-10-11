@@ -636,21 +636,50 @@ all_vars += lab_ovars
 # outcome variable
 
 def prep_dat(out,rhs):
-    if out[0:3] == 'CMA':
-        subset = full_dat[full_dat[out].isin(['0','1'])].copy()
-    elif out == 'A09A03b3':
-        subset = full_dat.copy()
+    # If variables in rhs are not in current full_dat, reread base
+    # and include
+    if out is None:
+        outl = []
     else:
-        subset = full_dat[full_dat[out].isin(['1','2'])].copy()
+        outl = [out]
+    ro = set(rhs + outl)
+    fd = set(list(full_dat))
+    diff = list(ro - fd)
+    new_dat = full_dat.copy()
+    if len(diff) > 0:
+        upd = pd.read_csv(data_loc, usecols=diff, dtype=str)
+        new_dat[diff] = upd
+    # If outcomes are not in my list, present a warning message
+    if out in outcomes:
+        pass
+    else:
+        print('\nWarning!!!')
+        print(f'The outcome variable {out} is not in my list of outcomes.')
+        print('Please encode the outcome variable as integer 0/1 before')
+        print('being passed to the genrules() class')
+    if out is None:
+        subset = new_dat.copy()
+    elif out[0:3] == 'CMA':
+        subset = new_dat[new_dat[out].isin(['0','1'])].copy()
+    elif out == 'A09A03b3':
+        subset = new_dat.copy()
+    elif out in outcomes:
+        subset = new_dat[new_dat[out].isin(['1','2'])].copy()
+    else:
+        subset = new_dat.copy()
     # If poutcome, stillbirth is 2, others 1 is bad
-    if out == 'pOUTCOME':
+    if out is None:
+        pass
+    elif out == 'pOUTCOME':
         subset[out] = 1*(subset[out] == '2')
     else:
         subset[out] = 1*(subset[out] == '1')
     subset.reset_index(drop=True,inplace=True)
     # Only returning specified variables
-    return subset[[out] + rhs]
-
+    if out is None:
+        return subset[rhs]
+    else:
+        return subset[[out] + rhs]
 
 
 
