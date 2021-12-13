@@ -115,9 +115,10 @@ class genrules():
         # calculate cross-tab for each category
         npx = np.array(xp)
         xvsel = (npx != None)
+        xvl = xvsel.sum()
         # If all zeroes, return 0s across board
         neg_ret = (0,0,0,0,0,0,self.neg_fit)
-        if xvsel.sum() == 0:
+        if xvl == 0:
             return neg_ret
         # Else go through the motions
         xdsel = 1*((self.x.iloc[:,xvsel] == npx[xvsel]).all(axis=1))
@@ -145,13 +146,13 @@ class genrules():
         log_rr = np.log(relrisk.clip(self.clip_val))
         l1 = nt[0,0]/(nt[0,1]*(nt[0,1] + nt[0,0]))
         l2 = nt[1,0]/(nt[1,1]*(nt[1,1] + nt[1,0])).clip(self.clip_val)
-        se_rr = np.sqrt( (l1 + l2) )
+        se_rr = np.sqrt( (l1 + l2).clip(self.clip_val) )
         z = log_rr/se_rr
         p = 1 - norm.cdf(z) # only positive part
         # The penalty term
         fitness = np.log2(relrisk).clip(-self.top_clip,self.top_clip) + p*self.penterms[0] + self.penterms[1]
         # Additional penalty for extra terms
-        fitness -= self.pen_var*len(xvsel)
+        fitness -= self.pen_var*xvl
         # The relative risk is penalized by p-value
         return [relrisk, log_rr, se_rr, p, sel_n, sel_out, fitness]
     def opt_func(self, xp):
